@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weather App</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background: url('https://source.unsplash.com/1920x1080/?city') center/cover no-repeat fixed;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .weather-card {
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        #city {
+            margin-bottom: 10px;
+        }
+
+        #getWeatherBtn {
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        #getWeatherBtn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Add CSS styles for the extended forecast */
+/* Add CSS styles for the extended forecast */
+.forecast-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* Center items vertically */
+    margin-top: 20px;
+    overflow-x: auto; /* Allow horizontal scrolling if content overflows */
+}
+
+.forecast-item {
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 10px;
+    border-radius: 10px;
+    flex: 1; /* Distribute available space evenly among items */
+    text-align: center;
+    color: #fff;
+    white-space: nowrap; /* Prevent text from wrapping */
+    overflow: hidden; /* Hide overflow text */
+    text-overflow: ellipsis; /* Add ellipsis for text that overflows */
+}
+
+.forecast-item p {
+    margin: 5px 0;
+}
+
+
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="weather-card">
+            <h1>Weather App</h1>
+            <input type="text" id="city" placeholder="Enter city name" class="form-control">
+            <button id="getWeatherBtn" class="btn btn-primary">Get Weather</button>
+            <div id="weather-info">
+                <h2>Loading...</h2>
+            </div>
+        </div>
+        <div id="forecast">
+            <!-- Extended forecast will be displayed here -->
+        </div>
+    </div>
+
+    <script>
+        const apiKey = 'aa12ddbe6c6a243eef2a5e41f14e366a'; // Replace with your OpenWeatherMap API key
+        const getWeatherBtn = document.getElementById("getWeatherBtn");
+
+        function getWeather() {
+            const city = document.getElementById("city").value;
+            if (!city) {
+                alert("Please enter a city name");
+                return;
+            }
+
+            getWeatherBtn.disabled = true;
+            getWeatherBtn.textContent = "Fetching...";
+
+            fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`)
+                .then(response => response.json())
+                .then(data => {
+                    const weatherInfo = `
+                        <h2>Weather in ${data.name}, ${data.sys.country}</h2>
+                        <p>Temperature: ${data.main.temp} &#8451;</p>
+                        <p>Weather: ${data.weather[0].description}</p>
+                        <p>Humidity: ${data.main.humidity}%</p>
+                    `;
+                    document.getElementById("weather-info").innerHTML = weatherInfo;
+                    getExtendedForecast(city);
+                })
+                .catch(error => {
+                    console.error(error);
+                    document.getElementById("weather-info").innerHTML = "Error fetching weather data.";
+                })
+                .finally(() => {
+                    getWeatherBtn.disabled = false;
+                    getWeatherBtn.textContent = "Get Weather";
+                });
+        }
+
+        function getExtendedForecast(city) {
+    fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`)
+        .then(response => response.json())
+        .then(data => {
+            const forecastInfo = document.getElementById("forecast");
+            forecastInfo.innerHTML = "<h2>Extended Forecast</h2>";
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set the time to midnight for comparison
+
+            // Filter and display tomorrow's forecast and today's forecast side by side
+            for (let i = 0; i < data.list.length; i++) {
+                const forecast = data.list[i];
+                const date = new Date(forecast.dt * 1000);
+                const day = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const temperature = forecast.main.temp;
+                const description = forecast.weather[0].description;
+
+                // Check if the forecast is for today or tomorrow
+                if (date.getTime() === today.getTime()) {
+                    const todayForecastItem = `
+                        <div class="forecast-container">
+                            <div class="forecast-item">
+                                <p>Today</p>
+                                <p>Date: ${date.toLocaleDateString()}</p>
+                                <p>Temperature: ${temperature} &#8451;</p>
+                                <p>Weather: ${description}</p>
+                            </div>
+                        </div>
+                    `;
+                    forecastInfo.innerHTML += todayForecastItem;
+                } else if (date.getDate() === today.getDate() + 1) {
+                    const tomorrowForecastItem = `
+                        <div class="forecast-container">
+                            <div class="forecast-item">
+                                <p>Tomorrow</p>
+                                <p>Date: ${date.toLocaleDateString()}</p>
+                                <p>Temperature: ${temperature} &#8451;</p>
+                                <p>Weather: ${description}</p>
+                            </div>
+                        </div>
+                    `;
+                    forecastInfo.innerHTML += tomorrowForecastItem;
+                }
+
+                // Display only two forecasts (today and tomorrow)
+                if (forecastInfo.childElementCount >= 2) {
+                    break;
+                }
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            document.getElementById("forecast").innerHTML = "Error fetching forecast data.";
+        });
+}
+
+
+        getWeatherBtn.addEventListener("click", getWeather);
+    </script>
+</body>
+</html>
